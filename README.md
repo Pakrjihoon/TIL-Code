@@ -7,3 +7,4 @@
 3. Angular를 이용하여 구현한 rest-api 를 볼 수있는 화면 개발
 4. Windows Batchfile 이용해보기
 5. Airflow dag를 만들어서 스케쥴링 해보기
+6. 게시판 데이터 크롤링 및 API화 시키기
