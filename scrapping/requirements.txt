@@ -1,0 +1,8 @@
+flask==1.1.2
+flask_cors==3.0.10
+flask_restx==0.3.0
+requests==2.22.0
+waitress==2.0.0
+beautifulsoup4==4.9.3
+bs4==0.0.1
+pymongo==3.12.1
