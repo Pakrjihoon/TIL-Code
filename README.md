@@ -6,3 +6,4 @@
 2. Spring Boot로 서버와 컨테이너 정보 API를 위한 restful 설계
 3. Angular를 이용하여 구현한 rest-api 를 볼 수있는 화면 개발
 4. Windows Batchfile 이용해보기
+5. Airflow dag를 만들어서 스케쥴링 해보기
