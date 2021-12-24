@@ -8,3 +8,4 @@
 4. Windows Batchfile 이용해보기
 5. Airflow dag를 만들어서 스케쥴링 해보기
 6. 게시판 데이터 크롤링 및 API화 시키기
+7. 스프링에서 RabbitMQ를 사용하여 주식 주문 포멧 전달 해보기
