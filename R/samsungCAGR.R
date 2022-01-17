@@ -1,15 +1,10 @@
 ## DB Connection Packages
-install.packages("rJava")
 install.packages("DBI")
-install.packages("RJDBC")
 install.packages("RMariaDB")
 
 ## Visualization Packages
 install.packages("plotly")
-install.packages("lattice")
 install.packages("ggplot2")
-install.packages("devtools")
-install.packages("ggpubr")
 
 # call Library
 library(RMariaDB)
@@ -20,11 +15,12 @@ conn <- DBI::dbConnect(RMariaDB::MariaDB(), username = "root", password = "root"
 
 dbListTables(conn)
 dbReadTable(conn, "table_name")
-res <- dbSendQuery(conn, "select * from tbl_name")
+res <- dbSendQuery(conn, "select *, IFNULL(round((power((market_cap/last_year_market_cap),1/1)-1)*100,2), 0) as 'CAGR' from(
++ select ticker_symbol, name, market_cap, token, date_time
++ , IFNULL(LAG(market_cap) OVER (ORDER BY date_time), 0) AS last_year_market_cap
++ from market_cap mc  where ticker_symbol = '005930') as mc;
++ ")
 dbFetch(res)
 
-data <- data.frame(res)
-
-# data Visualization
-ggplot(data, aes(x = x_field, y = y_field, color = market_type)) + geom_point()
- + scale_x_continuous(limits=c(0,27)) + scale_y_continuous(limits=c(-100, 500))
+df_growth <- dbFetch(res)
+fig <- ggplot(df_growth, aes(x = date_time, y =CAGR)) + geom_line()
