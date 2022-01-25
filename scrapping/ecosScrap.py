@@ -53,7 +53,6 @@ def valueOfData(apiKey, startPage, endPage, code, freq, startDate, endDate, deta
           % (apiKey, startPage, endPage, code, freq, startDate, endDate, detail)
     row = requests.get(url)
     allData = row.text
-
     xml = BeautifulSoup(allData, 'html.parser')
 
     row_date = xml.find_all("row")
@@ -69,16 +68,22 @@ def valueOfData(apiKey, startPage, endPage, code, freq, startDate, endDate, deta
             value = float(value)
         except:
             value = np.nan
+        if(len(startDate) == 4):
+            dateList.append(dateStr)
+        else:
+            dateList.append(datetime.datetime.strptime(dateStr, '%Y%m'))
 
-        dateList.append(datetime.datetime.strptime(dateStr, '%Y%m'))
         valueList.append(value)
     df = pd.DataFrame(index=dateList)
     df['%s'%(detail)] = valueList
     return df
 
-# 경기종합지수 (선행, 동행, 후행)
-def compositeIndexOfBusinessIndicators(apiKey, startPage, endPage, code, freq, startDate, endDate):
-    detail = ['I16A', 'I16B', 'I16C']
+# 공통 호출 함수 (기간, 통계코드 및 하위 depth 코드 사용으로 사용)
+def commonCall(apiKey, startPage, endPage, code, freq, startDate, endDate):
+    #detail = ['I16A', 'I16B', 'I16C']  # 경기종합지수 (선행, 동행, 후행)
+    #detail = ['AI1AA', 'AI1AB', 'AI1AF']  # 경제 성장률 (경제성장률, 민간소비증감률, 국내총투자율)
+    #detail = ['AI1AJ', 'AI1AK', 'AI1AH', 'AI1AI']  # 고용지표 (실업률, 고용률, 제조업 평균가동률, 제조업 재고율)
+    detail = ['AI1BB', 'AI1BA', 'AI1BC', 'AI1BF', 'AI1BD', 'AI1BE']  # 물가지수 (소비자/생산자 물가지수, 근원인플레이션율, 주택매매 가격등락률, 수출/수입 물가지수)
     data = pd.DataFrame()
     result = pd.DataFrame()
 
@@ -88,7 +93,7 @@ def compositeIndexOfBusinessIndicators(apiKey, startPage, endPage, code, freq, s
             data = result
         else:
             data = pd.merge(result, data, left_index=True, right_index=True, how='outer')
-    data.to_csv('ciobi.csv')
+    data.to_csv('employment.csv')
 
 
 if __name__ == "__main__":
@@ -103,10 +108,17 @@ if __name__ == "__main__":
     # df_ecos_exchange = exchangeRate(apiKey, '1', '100000', '036Y002', 'DD', '19700105', '20220120', '0000002')
 
     # 경기 종합 지수 (선행, 동행, 후행) = 1970년 1월 부터  #085Y026, [I16A, I16B, I16C]
-    df_ecos_composite = compositeIndexOfBusinessIndicators(apiKey, '1', '100000', '085Y026', 'MM', '197001', '202201')
+    # df_ecos_composite = commonCall(apiKey, '1', '100000', '085Y026', 'MM', '197001', '202201')
 
     # 소비자동향조사 소비지출전망CSI (~2008년 이전 : 분기, 2008년 이후 ~ : 월)
     # df_ecos_spending_plan = spendingPlan(apiKey, '1', '100000', '085Y026', 'MM', '197001', '202201')
 
+    # 경제성장 (경제성장률, 민간소비증감률 1960년 2분기 ~, 국내 총 투자율 1970년도 1분기 ~ )
+    #df_ecos_growth_economic = commonCall(apiKey, '1', '100000', '901Y001', 'QQ', '1960', '2022')
 
 
+    # 고용지표 (실업률, 고용률 1999년 6월 ~, 제조업 평균가동률 1980년 1월 ~, 제조업 재고율지수 1985년 1월 ~)
+    df_ecos_growth_economic = commonCall(apiKey, '1', '100000', '901Y001', 'MM', '196001', '202201')
+
+    # 물가지수 (소비자/생산자 - 1966년 1월 ~, 근원 인플레이션 - 1991년 1월, 주택매매 - 2004년 11월 ~, 수출/수입 - 1972년 1월 ~)
+    df_ecos_price_index = commonCall(apiKey, '1', '100000', '901Y001', 'MM', '196001', '202201')
