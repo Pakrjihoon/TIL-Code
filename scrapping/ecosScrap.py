@@ -71,7 +71,10 @@ def valueOfData(apiKey, startPage, endPage, code, freq, startDate, endDate, deta
         if(len(startDate) == 4):
             dateList.append(dateStr)
         else:
-            dateList.append(datetime.datetime.strptime(dateStr, '%Y%m'))
+            if(len(dateStr) == 4):
+                dateList.append(datetime.datetime.strptime(dateStr, '%Y'))
+            else:
+                dateList.append(datetime.datetime.strptime(dateStr, '%Y%m'))
 
         valueList.append(value)
     df = pd.DataFrame(index=dateList)
@@ -84,7 +87,10 @@ def commonCall(apiKey, startPage, endPage, code, freq, startDate, endDate):
     #detail = ['AI1AA', 'AI1AB', 'AI1AF']  # 경제 성장률 (경제성장률, 민간소비증감률, 국내총투자율)
     #detail = ['AI1AJ', 'AI1AK', 'AI1AH', 'AI1AI']  # 고용지표 (실업률, 고용률, 제조업 평균가동률, 제조업 재고율)
     #detail = ['AI1BB', 'AI1BA', 'AI1BC', 'AI1BF', 'AI1BD', 'AI1BE']  # 물가지수 (소비자/생산자 물가지수, 근원인플레이션율, 주택매매 가격등락률, 수출/수입 물가지수)
-    detail = ['AI1CA', 'AI1CB', 'AI1CE', 'AI1CF']  # 통화금융증권 (M1, M2, CD(91일), 국고채(3년))
+    #detail = ['AI1CA', 'AI1CB', 'AI1CE', 'AI1CF']  # 통화금융증권 (M1, M2, CD(91일), 국고채(3년))
+    #detail = ['AI1DC', 'AI1DA', 'AI1DAA', 'AI1DAB']  # 국제수지 무역 (외환보유액, 경상수지, 상품수지, 서비스수지)
+    #detail = ['AI1DC', 'AI1DA', 'AI1CH']  # 국내총생산 (외환보유액, 경상수지, 가계신용잔액)
+    detail = ['1010101']  # 국내총생산 (GDP)
     data = pd.DataFrame()
     result = pd.DataFrame()
 
@@ -94,7 +100,7 @@ def commonCall(apiKey, startPage, endPage, code, freq, startDate, endDate):
             data = result
         else:
             data = pd.merge(result, data, left_index=True, right_index=True, how='outer')
-    data.to_csv('currency_finance.csv')
+    data.to_csv('gdp2.csv')
 
 
 if __name__ == "__main__":
@@ -125,4 +131,10 @@ if __name__ == "__main__":
     # df_ecos_price_index = commonCall(apiKey, '1', '100000', '901Y001', 'MM', '196001', '202201')
 
     # 통화금융증권 (M1(평잔) 증감률 - 1971년 1월 ~ , M2(평잔) 증감률 - 1987년 1월 ~ , CD(91일) 수익률 - 1991년 3월 ~ , 국고채(3년) 수익률 - 1995년 5월 ~)
-    df_ecos_currency_finance = commonCall(apiKey, '1', '100000', '901Y001', 'MM', '196001', '202201')
+    #df_ecos_currency_finance = commonCall(apiKey, '1', '100000', '901Y001', 'MM', '196001', '202201')
+
+    # 국제무역수지 ( 외환보유액 - 1971년 1월 ~, 경상수지, 상품수지, 서비스수지 - 1980년 1월 ~) 기간 MM, YY 두가지
+    #df_ecos_balance_of_payment = commonCall(apiKey, '1', '100000', '901Y001', 'YY', '195001', '202201')
+
+    # 국내 총생산 ( GDP - 1953년 ~ )
+    df_ecos_gdp = commonCall(apiKey, '1', '100000', '111Y002', 'YY', '1950', '2022')
