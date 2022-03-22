@@ -83,7 +83,6 @@ def callback(ch, method, properties, body):
 
     body = str(body)
     body = int(body.replace('b', '').replace("'", ''))
-
     row = selectAccount()
     df = pd.DataFrame(row)
     account = body
