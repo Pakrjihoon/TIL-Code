@@ -86,7 +86,7 @@ def callback(ch, method, properties, body):
     row = selectAccount()
     df = pd.DataFrame(row)
     account = body
-    print(account)
+
     for i in range(0, len(row)):
         buyPrice = account * df.iloc[i]['position']
         token = buyPrice / df.iloc[i]['close_price']
