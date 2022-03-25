@@ -15,7 +15,7 @@ class DecimalEncoder(json.JSONEncoder):
             return str(o)
         return super(DecimalEncoder, self).default(o)
 
-def selectAccount():
+def selectClosePrice():
     row = None  # 쿼리 결과
     connection = None
     try:
@@ -57,6 +57,35 @@ where dea.ticker_symbol = rtw.ticker_symbol ;
         print('종료')
     # 결과를 리턴한다.
     return row
+def selectAccount():
+    row = None  # 쿼리 결과
+    connection = None
+    try:
+
+        connection = my.connect(host='10.100.1.191',  # 루프백주소, 자기자신주소
+                                user='root',  # DB ID
+                                password='root',  # 사용자가 지정한 비밀번호
+                                database='ra_data',
+                                port=13306,
+                                cursorclass=my.cursors.DictCursor  # 딕셔너리로 받기위한 커서
+                                )
+        cursor = connection.cursor()
+
+        sql = '''
+select * from balance b ORDER by created_at desc limit 1;
+        '''
+        cursor.execute(sql)  # 커리 실행
+        row = cursor.fetchall()
+
+        # print( row )
+    except Exception as e:
+        print('접속오류', e)
+    finally:
+        if connection:
+            connection.close()
+        print('종료')
+    # 결과를 리턴한다.
+    return row
 def web_request(method_name, url, dict_data, is_urlencoded=True):
     """Web GET or POST request를 호출 후 그 결과를 dict형으로 반환 """
     method_name = method_name.upper()  # 메소드이름을 대문자로 바꾼다
@@ -82,30 +111,33 @@ def web_request(method_name, url, dict_data, is_urlencoded=True):
 def callback(ch, method, properties, body):
 
     body = str(body)
-    body = int(body.replace('b', '').replace("'", ''))
-    row = selectAccount()
+    body = body.replace('b', '').replace("'", '')
+    row = selectClosePrice()
     df = pd.DataFrame(row)
-    account = body
 
-    for i in range(0, len(row)):
-        buyPrice = account * df.iloc[i]['position']
-        token = buyPrice / df.iloc[i]['close_price']
-        token = math.trunc(token)
-        print(df.iloc[i]['ticker_symbol'] + " 구매 개수 : " + str(token) + "개")
-        url = 'http://10.100.0.61:9090/api/v1/trading'
-        data = {"amount": int(token),
-                "orderPosition": "buy",
-                "portfolioName": "portfolio(T)",
-                "price": int(df.iloc[i]['close_price']),
-                "tickerSymbol": str(df.iloc[i]['ticker_symbol']),
-                "tradingName": "AIRI-RA",
-                "userId": "31"
-                }
-
-        print(data)
-        response = web_request(method_name='POST', url=url, dict_data=data, is_urlencoded=False)
-        print(response)
-        time.sleep(1)
+    accountDataFrame = pd.DataFrame(selectAccount())
+    account = int(accountDataFrame.iloc[0]['balance'])
+    print(account)
+    print(body)
+    # for i in range(0, len(row)):
+    #     buyPrice = account * df.iloc[i]['position']
+    #     token = buyPrice / df.iloc[i]['close_price']
+    #     token = math.trunc(token)
+    #     print(df.iloc[i]['ticker_symbol'] + " 구매 개수 : " + str(token) + "개")
+    #     url = 'http://10.100.0.61:9090/api/v1/trading'
+    #     data = {"amount": int(token),
+    #             "orderPosition": "buy",
+    #             "portfolioName": "Portfolio(T)",
+    #             "price": int(df.iloc[i]['close_price']),
+    #             "tickerSymbol": str(df.iloc[i]['ticker_symbol']),
+    #             "tradingName": "AIRI Dynamic Alpha",
+    #             "userId": "55500312301"
+    #             }
+    #
+    #     print(data)
+    #     response = web_request(method_name='POST', url=url, dict_data=data, is_urlencoded=False)
+    #     print(response)
+    #     time.sleep(1)
     return body
 
 if __name__ == '__main__':
