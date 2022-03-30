@@ -2,7 +2,6 @@ import json
 import decimal
 import math
 import time
-
 import requests
 import pandas as pd
 import pymysql as my
@@ -19,7 +18,6 @@ def selectClosePrice():
     row = None  # 쿼리 결과
     connection = None
     try:
-
         connection = my.connect(host='10.100.1.191',  # 루프백주소, 자기자신주소
                                 user='root',  # DB ID
                                 password='root',  # 사용자가 지정한 비밀번호
@@ -28,40 +26,37 @@ def selectClosePrice():
                                 cursorclass=my.cursors.DictCursor  # 딕셔너리로 받기위한 커서
                                 )
         cursor = connection.cursor()
-
         sql = '''
         select dea.ticker_symbol, `position`, close_price from rebalance_target_weight rtw,(select
-	*
+    *
 from(
-	select
-		*
-	from daily_etf_adj dea 
-	where (ticker_symbol, `date`) in (
-		select ticker_symbol, max(`date`) as date_time
-		from daily_etf_adj group by ticker_symbol
-	)
-	order by `date` desc
+    select
+        *
+    from daily_etf_adj dea
+    where (ticker_symbol, `date`) in (
+        select ticker_symbol, max(`date`) as date_time
+        from daily_etf_adj group by ticker_symbol
+    )
+    order by `date` desc
 ) t
 group by t.ticker_symbol) dea
 where dea.ticker_symbol = rtw.ticker_symbol ;
         '''
         cursor.execute(sql)  # 커리 실행
         row = cursor.fetchall()
-
         # print( row )
     except Exception as e:
         print('접속오류', e)
     finally:
         if connection:
             connection.close()
-        print('종료')
+        print('구매 개수 반환을 위한 종가 조회 종료')
     # 결과를 리턴한다.
     return row
 def selectAccount():
     row = None  # 쿼리 결과
     connection = None
     try:
-
         connection = my.connect(host='10.100.1.191',  # 루프백주소, 자기자신주소
                                 user='root',  # DB ID
                                 password='root',  # 사용자가 지정한 비밀번호
@@ -70,20 +65,18 @@ def selectAccount():
                                 cursorclass=my.cursors.DictCursor  # 딕셔너리로 받기위한 커서
                                 )
         cursor = connection.cursor()
-
         sql = '''
 select * from balance b ORDER by created_at desc limit 1;
         '''
         cursor.execute(sql)  # 커리 실행
         row = cursor.fetchall()
-
         # print( row )
     except Exception as e:
         print('접속오류', e)
     finally:
         if connection:
             connection.close()
-        print('종료')
+        print('계좌 잔고 조회 종료')
     # 결과를 리턴한다.
     return row
 def web_request(method_name, url, dict_data, is_urlencoded=True):
@@ -91,7 +84,6 @@ def web_request(method_name, url, dict_data, is_urlencoded=True):
     method_name = method_name.upper()  # 메소드이름을 대문자로 바꾼다
     if method_name not in ('GET', 'POST'):
         raise Exception('method_name is GET or POST plz...')
-
     if method_name == 'GET':  # GET방식인 경우
         response = requests.get(url=url, params=dict_data)
     elif method_name == 'POST':  # POST방식인 경우
@@ -100,57 +92,110 @@ def web_request(method_name, url, dict_data, is_urlencoded=True):
                                      headers={'Content-Type': 'application/x-www-form-urlencoded'})
         else:
             response = requests.post(url=url, data=json.dumps(dict_data), headers={'Content-Type': 'application/json'})
-
     dict_meta = {'status_code': response.status_code, 'ok': response.ok, 'encoding': response.encoding,
                  'Content-Type': response.headers['Content-Type']}
     if 'json' in str(response.headers['Content-Type']):  # JSON 형태인 경우
         return {**dict_meta, **response.json()}
     else:  # 문자열 형태인 경우
         return {**dict_meta, **{'text': response.text}}
-
+def rebalanceAccount():
+    rebalanceRow = None  # 쿼리 결과
+    connection = None
+    try:
+        connection = my.connect(host='10.100.1.191',  # 루프백주소, 자기자신주소
+                                user='root',  # DB ID
+                                password='root',  # 사용자가 지정한 비밀번호
+                                database='ra_data',
+                                port=13306,
+                                cursorclass=my.cursors.DictCursor  # 딕셔너리로 받기위한 커서
+                                )
+        cursor = connection.cursor()
+        sql = '''
+select ta.ticker_symbol , sale_available_amount, close_price from trading_account ta, (select
+  *
+from(
+  select
+    *
+  from daily_etf_adj dea
+  where (ticker_symbol, `date`) in (
+    select ticker_symbol, max(`date`) as date_time
+    from daily_etf_adj group by ticker_symbol
+  )
+  order by `date` desc
+)t group by t.ticker_symbol) dea
+where dea.ticker_symbol = ta.ticker_symbol
+and DATE_FORMAT(ta.created_at, '%Y-%m-%d') = DATE_FORMAT(now() - INTERVAL 1 DAY, '%Y-%m-%d')
+and ta.ticker_symbol not in (SELECT ta.ticker_symbol from trading_account ta
+left outer join rebalance_target_weight rtw
+on ta.ticker_symbol = rtw.ticker_symbol
+where date_format(ta.created_at, '%Y-%m-%d') = DATE_FORMAT(now() - INTERVAL 1 DAY, '%Y-%m-%d')
+and rtw.rebalance_group_id = (select max(rtw2.rebalance_group_id) from rebalance_target_weight rtw2
+where rtw2.account_id = 1 group by account_id)) and sale_available_amount <> 0 group by ta.ticker_symbol ;
+        '''
+        cursor.execute(sql)  # 커리 실행
+        rebalanceRow = cursor.fetchall()
+    except Exception as e:
+        print('접속오류', e)
+    finally:
+        if connection:
+            connection.close()
+        print('리벨런싱 매매 종료')
+    # 결과를 리턴한다.
+    return rebalanceRow
 def callback(ch, method, properties, body):
-
     body = str(body)
-    body = body.replace('b', '').replace("'", '')
+    body = body.lstrip('b').replace("'", '')
     row = selectClosePrice()
     df = pd.DataFrame(row)
-
+    print(body)
+    rebalance = rebalanceAccount()
+    rebalanceDataFrame = pd.DataFrame(rebalance)
     accountDataFrame = pd.DataFrame(selectAccount())
     account = int(accountDataFrame.iloc[0]['balance'])
-    print(account)
-    print(body)
-    # for i in range(0, len(row)):
-    #     buyPrice = account * df.iloc[i]['position']
-    #     token = buyPrice / df.iloc[i]['close_price']
-    #     token = math.trunc(token)
-    #     print(df.iloc[i]['ticker_symbol'] + " 구매 개수 : " + str(token) + "개")
-    #     url = 'http://10.100.0.61:9090/api/v1/trading'
-    #     data = {"amount": int(token),
-    #             "orderPosition": "buy",
-    #             "portfolioName": "Portfolio(T)",
-    #             "price": int(df.iloc[i]['close_price']),
-    #             "tickerSymbol": str(df.iloc[i]['ticker_symbol']),
-    #             "tradingName": "AIRI Dynamic Alpha",
-    #             "userId": "55500312301"
-    #             }
-    #
-    #     print(data)
-    #     response = web_request(method_name='POST', url=url, dict_data=data, is_urlencoded=False)
-    #     print(response)
-    #     time.sleep(1)
+    if body == "trading_buy":
+        for i in range(0, len(row)):
+            buyPrice = account * df.iloc[i]['position']
+            token = buyPrice / df.iloc[i]['close_price']
+            token = math.trunc(token)
+            print(df.iloc[i]['ticker_symbol'] + " 구매 개수 : " + str(token) + "개")
+            url = 'http://10.100.0.61:9090/api/v1/trading'
+            data = {"amount": int(token),
+                    "orderPosition": "buy",
+                    "portfolioName": "Portfolio(T)",
+                    "price": int(df.iloc[i]['close_price']),
+                    "tickerSymbol": str(df.iloc[i]['ticker_symbol']),
+                    "tradingName": "AIRI Dynamic Alpha",
+                    "accountNumber": "55500312301"
+                    }
+            print(data)
+            response = web_request(method_name='POST', url=url, dict_data=data, is_urlencoded=False)
+            print(response)
+            time.sleep(1)
+    elif body == "rebalance":
+        for i in range(0, len(rebalance)):
+            url = 'http://10.100.0.61:9090/api/v1/trading'
+            data = {"amount": int(rebalanceDataFrame.iloc[i]['sale_available_amount']),
+                    "orderPosition": "sell",
+                    "portfolioName": "Portfolio(T)",
+                    "price": int(rebalanceDataFrame.iloc[i]['close_price']),
+                    "tickerSymbol": str(rebalanceDataFrame.iloc[i]['ticker_symbol']),
+                    "tradingName": "AIRI Dynamic Alpha",
+                    "accountNumber": "55500312301"
+                    }
+            print(data)
+            response = web_request(method_name='POST', url=url, dict_data=data, is_urlencoded=False)
+            print(response)
+            time.sleep(1)
+    else:
+        print("올바르지 않은 주문 유형입니다.")
     return body
-
 if __name__ == '__main__':
     # 테스트
-
     cred = pika.PlainCredentials('admin', 'admin')
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host='10.100.1.126', credentials=cred))
     channel = connection.channel()
-
-
     print('Waiting for logs')
-
     channel.basic_consume(
         queue='account', on_message_callback=callback, auto_ack=True)
     channel.start_consuming()
